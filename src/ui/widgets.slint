@@ -1,0 +1,149 @@
+import { Theme } from "theme.slint";
+
+// Contenedor de vidrio: fondo translúcido, borde claro y sombra difusa.
+export component Panel inherits Rectangle {
+    background: Theme.vidrio;
+    border-width: 1px;
+    border-color: Theme.borde;
+    border-radius: Theme.radio;
+    drop-shadow-blur: 42px;
+    drop-shadow-color: #04030bc4;
+    drop-shadow-offset-y: 18px;
+
+    @children
+}
+
+// Etiqueta de estado con un punto de color.
+export component Pastilla inherits Rectangle {
+    in property <string> texto;
+    in property <color> tono: Theme.ok;
+
+    height: 26px;
+    border-radius: 13px;
+    background: Theme.vidrio-fuerte;
+    border-width: 1px;
+    border-color: Theme.borde;
+
+    HorizontalLayout {
+        padding-left: 11px;
+        padding-right: 12px;
+        spacing: 7px;
+        alignment: center;
+
+        Rectangle {
+            width: 7px;
+            height: 7px;
+            border-radius: 4px;
+            background: root.tono;
+        }
+
+        Text {
+            text: root.texto;
+            font-size: 12px;
+            color: Theme.texto;
+            vertical-alignment: center;
+        }
+    }
+}
+
+export component Boton inherits Rectangle {
+    in property <string> texto;
+    in property <bool> principal: false;
+    in property <bool> habilitado: true;
+    callback pulsado();
+
+    border-radius: 11px;
+    background: toque.has-hover ? (root.principal ? #a78bfa : Theme.vidrio-hover)
+                                : (root.principal ? Theme.violeta : Theme.vidrio-fuerte);
+    border-width: 1px;
+    border-color: root.principal ? #c4b5fd66 : Theme.borde;
+    opacity: root.habilitado ? 1.0 : 0.4;
+
+    HorizontalLayout {
+        padding-left: 16px;
+        padding-right: 16px;
+        padding-top: 8px;
+        padding-bottom: 8px;
+        alignment: center;
+
+        Text {
+            text: root.texto;
+            font-size: 13px;
+            font-weight: 600;
+            color: root.principal ? #140a2e : Theme.texto;
+        }
+    }
+
+    toque := TouchArea {
+        clicked => {
+            if (root.habilitado) {
+                root.pulsado();
+            }
+        }
+    }
+}
+
+// Tarjeta de métrica con barra de progreso.
+export component Medidor inherits Rectangle {
+    in property <string> titulo;
+    in property <string> valor;
+    in property <string> detalle: "";
+    in property <float> porcentaje: 0;
+    in property <color> color-barra: Theme.violeta;
+
+    background: #ffffff0d;
+    border-radius: 16px;
+    border-width: 1px;
+    border-color: Theme.borde;
+
+    VerticalLayout {
+        padding: 16px;
+        spacing: 9px;
+
+        HorizontalLayout {
+            alignment: center;
+            spacing: 10px;
+
+            Text {
+                text: root.titulo;
+                font-size: 12px;
+                font-weight: 600;
+                color: Theme.texto-tenue;
+                vertical-alignment: center;
+            }
+
+            Rectangle {
+                horizontal-stretch: 1;
+            }
+
+            Text {
+                text: root.valor;
+                font-size: 17px;
+                font-weight: 700;
+                color: Theme.texto;
+                vertical-alignment: center;
+            }
+        }
+
+        Rectangle {
+            height: 7px;
+            border-radius: 4px;
+            background: #ffffff1a;
+
+            Rectangle {
+                width: parent.width * min(100.0, max(0.0, root.porcentaje)) / 100.0;
+                height: 100%;
+                border-radius: 4px;
+                background: root.color-barra;
+            }
+        }
+
+        Text {
+            text: root.detalle;
+            visible: root.detalle != "";
+            font-size: 11px;
+            color: Theme.texto-tenue;
+            wrap: word-wrap;
+        }
+    }
+}

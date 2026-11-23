@@ -1,0 +1,85 @@
+import { LineEdit } from "std-widgets.slint";
+import { Theme } from "theme.slint";
+import { Panel, Boton } from "widgets.slint";
+
+export component ConnectPage inherits Rectangle {
+    in-out property <string> host: "localhost";
+    in-out property <string> url: "ws://localhost:8080/ws";
+    callback connect(string, string);
+
+    background: transparent;
+
+    VerticalLayout {
+        alignment: center;
+
+        HorizontalLayout {
+            alignment: center;
+
+            Panel {
+                width: min(460px, root.width - 48px);
+
+                VerticalLayout {
+                    padding: 30px;
+                    spacing: 12px;
+
+                    Text {
+                        text: "Agent Monitor";
+                        font-size: 26px;
+                        font-weight: 700;
+                        color: Theme.texto;
+                    }
+
+                    Text {
+                        text: "Métricas del servidor por WebSocket y una terminal SSH en la misma ventana.";
+                        font-size: 13px;
+                        color: Theme.texto-tenue;
+                        wrap: word-wrap;
+                    }
+
+                    Rectangle {
+                        height: 6px;
+                    }
+
+                    Text {
+                        text: "NOMBRE DEL SERVIDOR";
+                        font-size: 11px;
+                        letter-spacing: 1px;
+                        color: Theme.texto-tenue;
+                    }
+
+                    LineEdit {
+                        text <=> root.host;
+                        placeholder-text: "localhost";
+                        accepted => { root.connect(root.host, root.url); }
+                    }
+
+                    Text {
+                        text: "URL DEL WEBSOCKET";
+                        font-size: 11px;
+                        letter-spacing: 1px;
+                        color: Theme.texto-tenue;
+                    }
+
+                    LineEdit {
+                        text <=> root.url;
+                        placeholder-text: "ws://localhost:8080/ws";
+                        accepted => { root.connect(root.host, root.url); }
+                    }
+
+                    Boton {
+                        texto: "Conectar";
+                        principal: true;
+                        pulsado => { root.connect(root.host, root.url); }
+                    }
+
+                    Text {
+                        text: "El servidor responde con texto plano cuando aún no tiene muestra de CPU; el cliente reintenta cada 2 segundos.";
+                        font-size: 11px;
+                        color: Theme.texto-tenue;
+                        wrap: word-wrap;
+                    }
+                }
+            }
+        }
+    }
+}

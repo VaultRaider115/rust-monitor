@@ -1,0 +1,396 @@
+import { Palette, LineEdit } from "std-widgets.slint";
+import { Theme } from "theme.slint";
+import { Panel, Pastilla, Boton, Medidor } from "widgets.slint";
+import { ConnectPage } from "connect.slint";
+
+export struct RedVista {
+    nombre: string,
+    recibido: string,
+    enviado: string,
+}
+
+export component AppWindow inherits Window {
+    title: "Agent Monitor";
+    preferred-width: 1280px;
+    preferred-height: 820px;
+    min-width: 1000px;
+    min-height: 640px;
+    background: Theme.fondo-abajo;
+
+    in-out property <bool> show-stats: false;
+    in-out property <string> servidor: "localhost";
+    in-out property <string> url: "ws://localhost:8080/ws";
+    in property <string> saludo: "";
+    in property <string> estado: "Sin conexión";
+    in property <bool> en-linea: false;
+    in property <string> error-message: "";
+
+    in property <float> cpu-porcentaje: 0;
+    in property <string> cpu-valor: "—";
+    in property <float> ram-porcentaje: 0;
+    in property <string> ram-valor: "—";
+    in property <string> ram-detalle: "";
+    in property <float> disco-porcentaje: 0;
+    in property <string> disco-valor: "—";
+    in property <string> disco-detalle: "";
+    in property <[RedVista]> redes: [];
+
+    in property <string> terminal-texto: "";
+    in property <string> ssh-estado: "desconectada";
+    in property <bool> ssh-conectado: false;
+    in-out property <string> ssh-destino: "root@localhost";
+    in-out property <string> ssh-comando: "";
+
+    callback connect(string, string);
+    callback desconectar();
+    callback ssh-conectar(string);
+    callback ssh-enviar(string);
+    callback ssh-interrumpir();
+
+    init => {
+        // Los widgets estándar (LineEdit) siguen la paleta; forzamos el tema oscuro.
+        Palette.color-scheme = ColorScheme.dark;
+    }
+
+    fondo := Rectangle {
+        width: 100%;
+        height: 100%;
+        background: @linear-gradient(155deg, Theme.fondo-arriba 0%, Theme.fondo-abajo 62%);
+
+        // Halos de color que se leen a través del vidrio.
+        Rectangle {
+            x: -140px;
+            y: -200px;
+            width: 560px;
+            height: 560px;
+            border-radius: 280px;
+            background: Theme.violeta;
+            opacity: 0.40;
+            drop-shadow-blur: 220px;
+            drop-shadow-color: #7c3aed;
+        }
+
+        Rectangle {
+            x: parent.width - 380px;
+            y: parent.height - 420px;
+            width: 520px;
+            height: 520px;
+            border-radius: 260px;
+            background: Theme.cian;
+            opacity: 0.18;
+            drop-shadow-blur: 220px;
+            drop-shadow-color: #22d3ee;
+        }
+
+        Rectangle {
+            x: parent.width * 0.45;
+            y: -180px;
+            width: 380px;
+            height: 380px;
+            border-radius: 190px;
+            background: Theme.rosa;
+            opacity: 0.15;
+            drop-shadow-blur: 180px;
+            drop-shadow-color: #f472b6;
+        }
+
+        if !root.show-stats : ConnectPage {
+            host <=> root.servidor;
+            url <=> root.url;
+            connect(host, url) => { root.connect(host, url); }
+        }
+
+        if root.show-stats : VerticalLayout {
+            padding: 22px;
+            spacing: 16px;
+
+            // Encabezado
+            HorizontalLayout {
+                alignment: center;
+                spacing: 12px;
+
+                Text {
+                    text: "AGENT MONITOR";
+                    font-size: 18px;
+                    font-weight: 700;
+                    letter-spacing: 2px;
+                    color: Theme.texto;
+                    vertical-alignment: center;
+                }
+
+                Rectangle {
+                    width: 1px;
+                    height: 20px;
+                    background: Theme.borde-fuerte;
+                }
+
+                Pastilla {
+                    texto: root.estado;
+                    tono: root.en-linea ? Theme.ok : Theme.alerta;
+                }
+
+                Rectangle {
+                    horizontal-stretch: 1;
+                }
+
+                Text {
+                    text: root.servidor;
+                    font-size: 13px;
+                    color: Theme.texto-tenue;
+                    vertical-alignment: center;
+                }
+
+                Boton {
+                    texto: "Cambiar servidor";
+                    pulsado => { root.desconectar(); }
+                }
+            }
+
+            HorizontalLayout {
+                spacing: 18px;
+
+                // Columna izquierda: métricas recibidas por el WebSocket
+                Panel {
+                    VerticalLayout {
+                        padding: 22px;
+                        spacing: 13px;
+
+                        HorizontalLayout {
+                            alignment: center;
+                            spacing: 10px;
+
+                            Text {
+                                text: "Métricas del sistema";
+                                font-size: 15px;
+                                font-weight: 600;
+                                color: Theme.texto;
+                                vertical-alignment: center;
+                            }
+
+                            Rectangle {
+                                horizontal-stretch: 1;
+                            }
+
+                            Text {
+                                text: "muestra cada 2 s";
+                                font-size: 11px;
+                                color: Theme.texto-tenue;
+                                vertical-alignment: center;
+                            }
+                        }
+
+                        Medidor {
+                            titulo: "CPU";
+                            valor: root.cpu-valor;
+                            porcentaje: root.cpu-porcentaje;
+                            detalle: "uso instantáneo desde /proc/stat";
+                            color-barra: Theme.violeta;
+                        }
+
+                        Medidor {
+                            titulo: "MEMORIA RAM";
+                            valor: root.ram-valor;
+                            detalle: root.ram-detalle;
+                            porcentaje: root.ram-porcentaje;
+                            color-barra: Theme.cian;
+                        }
+
+                        Medidor {
+                            titulo: "DISCO /";
+                            valor: root.disco-valor;
+                            detalle: root.disco-detalle;
+                            porcentaje: root.disco-porcentaje;
+                            color-barra: Theme.rosa;
+                        }
+
+                        // Red
+                        Rectangle {
+                            background: #ffffff0d;
+                            border-radius: 16px;
+                            border-width: 1px;
+                            border-color: Theme.borde;
+
+                            VerticalLayout {
+                                padding: 16px;
+                                spacing: 8px;
+
+                                Text {
+                                    text: "RED";
+                                    font-size: 12px;
+                                    font-weight: 600;
+                                    color: Theme.texto-tenue;
+                                }
+
+                                if root.redes.length == 0 : Text {
+                                    text: "El servidor no reportó interfaces compatibles.";
+                                    font-size: 11px;
+                                    color: Theme.texto-tenue;
+                                    wrap: word-wrap;
+                                }
+
+                                for red in root.redes : HorizontalLayout {
+                                    spacing: 10px;
+                                    alignment: center;
+
+                                    Text {
+                                        text: red.nombre;
+                                        font-size: 12px;
+                                        color: Theme.texto;
+                                        vertical-alignment: center;
+                                    }
+
+                                    Rectangle {
+                                        horizontal-stretch: 1;
+                                    }
+
+                                    Text {
+                                        text: "↓ " + red.recibido;
+                                        font-size: 12px;
+                                        color: Theme.cian;
+                                        vertical-alignment: center;
+                                    }
+
+                                    Text {
+                                        text: "↑ " + red.enviado;
+                                        font-size: 12px;
+                                        color: Theme.rosa;
+                                        vertical-alignment: center;
+                                    }
+                                }
+                            }
+                        }
+
+                        Rectangle {
+                            vertical-stretch: 1;
+                        }
+
+                        Text {
+                            text: root.saludo;
+                            visible: root.saludo != "";
+                            font-size: 11px;
+                            color: Theme.texto-tenue;
+                            wrap: word-wrap;
+                        }
+
+                        Text {
+                            text: root.error-message;
+                            visible: root.error-message != "";
+                            font-size: 11px;
+                            color: Theme.error;
+                            wrap: word-wrap;
+                        }
+                    }
+                }
+
+                // Columna derecha: terminal SSH
+                Panel {
+                    VerticalLayout {
+                        padding: 22px;
+                        spacing: 12px;
+
+                        HorizontalLayout {
+                            alignment: center;
+                            spacing: 10px;
+
+                            Text {
+                                text: "Terminal SSH";
+                                font-size: 15px;
+                                font-weight: 600;
+                                color: Theme.texto;
+                                vertical-alignment: center;
+                            }
+
+                            Rectangle {
+                                horizontal-stretch: 1;
+                            }
+
+                            Pastilla {
+                                texto: root.ssh-estado;
+                                tono: root.ssh-conectado ? Theme.ok : Theme.alerta;
+                            }
+                        }
+
+                        HorizontalLayout {
+                            spacing: 8px;
+                            alignment: center;
+
+                            LineEdit {
+                                text <=> root.ssh-destino;
+                                placeholder-text: "usuario@host[:puerto]";
+                                horizontal-stretch: 1;
+                                accepted => { root.ssh-conectar(root.ssh-destino); }
+                            }
+
+                            Boton {
+                                texto: "Conectar";
+                                principal: true;
+                                pulsado => { root.ssh-conectar(root.ssh-destino); }
+                            }
+                        }
+
+                        Rectangle {
+                            vertical-stretch: 1;
+                            border-radius: 16px;
+                            background: #05030ee6;
+                            border-width: 1px;
+                            border-color: Theme.borde;
+                            clip: true;
+
+                            Text {
+                                x: 14px;
+                                y: 12px;
+                                width: parent.width - 28px;
+                                height: parent.height - 24px;
+                                text: root.terminal-texto;
+                                font-family: Theme.mono;
+                                font-size: 11px;
+                                color: #d7fbe8;
+                                horizontal-alignment: left;
+                                vertical-alignment: bottom;
+                            }
+                        }
+
+                        HorizontalLayout {
+                            spacing: 8px;
+                            alignment: center;
+
+                            LineEdit {
+                                text <=> root.ssh-comando;
+                                placeholder-text: "escribe un comando y pulsa Enter";
+                                horizontal-stretch: 1;
+                                accepted => {
+                                    if (root.ssh-comando != "") {
+                                        root.ssh-enviar(root.ssh-comando);
+                                        root.ssh-comando = "";
+                                    }
+                                }
+                            }
+
+                            Boton {
+                                texto: "Enviar";
+                                pulsado => {
+                                    if (root.ssh-comando != "") {
+                                        root.ssh-enviar(root.ssh-comando);
+                                        root.ssh-comando = "";
+                                    }
+                                }
+                            }
+
+                            Boton {
+                                texto: "Ctrl+C";
+                                pulsado => { root.ssh-interrumpir(); }
+                            }
+                        }
+
+                        Text {
+                            text: "La contraseña se pide dentro de la terminal, igual que con ssh en consola.";
+                            font-size: 11px;
+                            color: Theme.texto-tenue;
+                            wrap: word-wrap;
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
